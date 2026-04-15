@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>5天课程 · 用 Claude Code 设计短线量化交易软件</title>
+<style>
+  :root {
+    --bg:     #080d14;
+    --bg2:    #0d1420;
+    --bg3:    #111c2d;
+    --bg4:    #162035;
+    --border: #1e2d45;
+    --green:  #00e676;
+    --blue:   #42a5f5;
+    --purple: #af52bf;
+    --cyan:   #00bcd4;
+    --amber:  #ffab00;
+    --red:    #f44336;
+    --text1:  #f0f4f8;
+    --text2:  #8a9bb0;
+    --text3:  #4a5f78;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background:var(--bg);
+    color:var(--text1);
+    font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
+    line-height:1.6;
+    min-height:100vh;
+  }
+
+  /* ── Hero ── */
+  .hero {
+    background:linear-gradient(160deg,#0a1628 0%,#0d1f3c 50%,#0a1628 100%);
+    border-bottom:1px solid var(--border);
+    padding:64px 24px 52px;
+    text-align:center;
+    position:relative;
+    overflow:hidden;
+  }
+  .hero::before {
+    content:'';position:absolute;inset:0;
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 50%,rgba(0,230,118,.06) 0%,transparent 60%),
+      radial-gradient(ellipse 50% 40% at 80% 50%,rgba(66,165,245,.06) 0%,transparent 60%);
+  }
+  .hero-badge {
+    display:inline-block;
+    background:rgba(0,230,118,.12);border:1px solid rgba(0,230,118,.3);
+    color:var(--green);font-size:11px;font-weight:700;letter-spacing:2px;
+    padding:5px 16px;border-radius:20px;margin-bottom:20px;text-transform:uppercase;
+  }
+  .hero h1 {
+    font-size:clamp(24px,4vw,42px);font-weight:900;line-height:1.2;
+    margin-bottom:16px;letter-spacing:-0.5px;position:relative;
+  }
+  .hero h1 span { color:var(--green); }
+  .hero p { font-size:15px;color:var(--text2);max-width:560px;margin:0 auto 32px;line-height:1.8;position:relative; }
+  .hero-stats { display:flex;justify-content:center;gap:40px;flex-wrap:wrap;position:relative; }
+  .hero-stat .num { font-size:28px;font-weight:900;color:var(--green);display:block; }
+  .hero-stat .label { font-size:11px;color:var(--text3);margin-top:2px; }
+
+  /* ── Container ── */
+  .container { max-width:960px;margin:0 auto;padding:48px 20px 80px; }
+
+  .section-title {
+    font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;
+    color:var(--text3);margin-bottom:24px;display:flex;align-items:center;gap:12px;
+  }
+  .section-title::after { content:'';flex:1;height:1px;background:var(--border); }
+
+  /* ── 路径速览 ── */
+  .path-grid { display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:56px; }
+  @media(max-width:600px){ .path-grid{grid-template-columns:repeat(3,1fr);} }
+  .path-step {
+    background:var(--bg2);border:1px solid var(--border);border-radius:12px;
+    padding:16px 8px;text-align:center;cursor:pointer;
+    transition:border-color .2s,transform .2s;
+  }
+  .path-step:hover { transform:translateY(-3px); }
+  .path-step .ps-day { font-size:10px;color:var(--text3);margin-bottom:4px; }
+  .path-step .ps-icon { font-size:24px;margin-bottom:5px; }
+  .path-step .ps-name { font-size:11px;font-weight:700;line-height:1.4; }
+
+  /* ── 概览卡片 ── */
+  .overview-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:56px; }
+  .overview-card {
+    background:var(--bg2);border:1px solid var(--border);border-radius:12px;
+    padding:18px 16px;text-align:center;transition:border-color .2s,transform .2s;
+  }
+  .overview-card:hover { border-color:var(--green);transform:translateY(-2px); }
+  .overview-card .oc-icon { font-size:26px;margin-bottom:8px; }
+  .overview-card .oc-title { font-size:13px;font-weight:700;color:var(--text1);margin-bottom:4px; }
+  .overview-card .oc-desc { font-size:11px;color:var(--text2);line-height:1.5; }
+
+  /* ── Day 卡片 ── */
+  .day-card {
+    background:var(--bg2);border:1px solid var(--border);border-radius:16px;
+    margin-bottom:20px;overflow:hidden;transition:border-color .2s;
+  }
+  .day-card:hover { border-color:rgba(255,255,255,.12); }
+  .day-header {
+    display:flex;align-items:center;gap:16px;padding:20px 24px;
+    cursor:pointer;user-select:none;
+  }
+  .day-num {
+    width:52px;height:52px;border-radius:14px;display:flex;align-items:center;
+    justify-content:center;font-size:20px;font-weight:900;flex-shrink:0;
+    background:var(--dc-bg);color:var(--dc);
+  }
+  .day-header-text { flex:1; }
+  .day-header-text .day-label { font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--dc);margin-bottom:3px; }
+  .day-header-text h2 { font-size:17px;font-weight:800;line-height:1.2; }
+  .day-header-text .day-sub { font-size:12px;color:var(--text2);margin-top:3px; }
+  .day-tags { display:flex;flex-wrap:wrap;gap:6px;align-items:center; }
+  .day-tag { font-size:10px;font-weight:600;padding:3px 8px;border-radius:6px; }
+  .chevron { font-size:12px;color:var(--text3);transition:transform .25s;flex-shrink:0; }
+  .day-card.open .chevron { transform:rotate(90deg); }
+  .day-body { display:none;border-top:1px solid var(--border);padding:24px; }
+  .day-card.open .day-body { display:block; }
+
+  /* 颜色主题 */
+  .d1 { --dc:#00e676; --dc-bg:rgba(0,230,118,.12); }
+  .d2 { --dc:#42a5f5; --dc-bg:rgba(66,165,245,.12); }
+  .d3 { --dc:#af52bf; --dc-bg:rgba(175,82,191,.12); }
+  .d4 { --dc:#00bcd4; --dc-bg:rgba(0,188,212,.12); }
+  .d5 { --dc:#ffab00; --dc-bg:rgba(255,171,0,.12); }
+
+  /* ── 模块 ── */
+  .module-list { display:flex;flex-direction:column;gap:16px; }
+  .module {
+    background:var(--bg3);border:1px solid var(--border);
+    border-radius:10px;padding:16px 18px;
+  }
+  .module-header { display:flex;align-items:center;gap:10px;margin-bottom:10px; }
+  .module-icon { font-size:18px; }
+  .module-title { font-size:14px;font-weight:700;color:var(--text1); }
+  .module-duration {
+    margin-left:auto;font-size:10px;color:var(--text3);
+    background:var(--bg4);padding:2px 8px;border-radius:6px;
+  }
+  .module-desc { font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.6; }
+  .points { display:flex;flex-direction:column;gap:5px; }
+  .point { display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--text2);line-height:1.5; }
+  .point-dot { width:5px;height:5px;border-radius:50%;background:var(--text3);margin-top:6px;flex-shrink:0; }
+
+  .claude-tip {
+    margin-top:14px;background:rgba(0,230,118,.05);
+    border:1px solid rgba(0,230,118,.2);border-left:3px solid var(--green);
+    border-radius:8px;padding:10px 14px;
+  }
+  .claude-tip-label { font-size:10px;font-weight:700;color:var(--green);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px; }
+  .claude-tip-text { font-size:11px;color:rgba(0,230,118,.7);line-height:1.6;font-family:'SF Mono','Fira Code',monospace; }
+
+  .output-box { margin-top:20px;background:var(--bg4);border:1px solid var(--border);border-radius:10px;padding:14px 18px; }
+  .output-label { font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--amber);margin-bottom:10px; }
+  .output-items { display:flex;flex-wrap:wrap;gap:8px; }
+  .output-item {
+    font-size:11px;background:rgba(255,171,0,.1);border:1px solid rgba(255,171,0,.25);
+    color:var(--amber);padding:4px 10px;border-radius:6px;
+  }
+
+  /* ── 底部 ── */
+  footer {
+    border-top:1px solid var(--border);padding:32px 24px;
+    text-align:center;color:var(--text3);font-size:12px;line-height:1.8;
+  }
+  footer strong { color:var(--text2); }
+</style>
+</head>
+<body>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="hero-badge">系统课程规划</div>
+  <h1>用 <span>Claude Code</span> 设计<br>短线量化交易软件</h1>
+  <p>从零到一，5天构建一套具备实盘价值的 A 股短线量化系统，最后一天完成回测验证与本地部署。</p>
+  <div class="hero-stats">
+    <div class="hero-stat"><span class="num">5</span><div class="label">天系统课程</div></div>
+    <div class="hero-stat"><span class="num">20</span><div class="label">个核心模块</div></div>
+    <div class="hero-stat"><span class="num">1</span><div class="label">套可运行系统</div></div>
+    <div class="hero-stat"><span class="num">∞</span><div class="label">AI 加速倍率</div></div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- 路径速览 -->
+  <div class="section-title">学习路径速览</div>
+  <div class="path-grid">
+    <div class="path-step" onclick="openDay(0)">
+      <div class="ps-day">DAY 1</div>
+      <div class="ps-icon">📡</div>
+      <div class="ps-name" style="color:#00e676">环境 &<br>数据层</div>
+    </div>
+    <div class="path-step" onclick="openDay(1)">
+      <div class="ps-day">DAY 2</div>
+      <div class="ps-icon">🧮</div>
+      <div class="ps-name" style="color:#42a5f5">信号 &<br>评分系统</div>
+    </div>
+    <div class="path-step" onclick="openDay(2)">
+      <div class="ps-day">DAY 3</div>
+      <div class="ps-icon">🎨</div>
+      <div class="ps-name" style="color:#af52bf">前端<br>界面</div>
+    </div>
+    <div class="path-step" onclick="openDay(3)">
+      <div class="ps-day">DAY 4</div>
+      <div class="ps-icon">🔔</div>
+      <div class="ps-name" style="color:#00bcd4">提醒 &<br>风控</div>
+    </div>
+    <div class="path-step" onclick="openDay(4)">
+      <div class="ps-day">DAY 5</div>
+      <div class="ps-icon">🚀</div>
+      <div class="ps-name" style="color:#ffab00">回测 &<br>部署</div>
+    </div>
+  </div>
+
+  <!-- 课程总览表 -->
+  <div class="section-title">课程内容总览</div>
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:56px">
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead>
+        <tr style="background:var(--bg4);border-bottom:1px solid var(--border)">
+          <th style="padding:12px 20px;text-align:left;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);white-space:nowrap;width:60px">天</th>
+          <th style="padding:12px 20px;text-align:left;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);white-space:nowrap;width:100px">主题</th>
+          <th style="padding:12px 20px;text-align:left;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--text3)">核心内容</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:14px 20px;font-weight:900;color:#00e676;white-space:nowrap">Day 1</td>
+          <td style="padding:14px 20px;color:var(--text2);white-space:nowrap">认知 &amp; 数据层</td>
+          <td style="padding:14px 20px;color:var(--text1)">Claude Code 心智模型、FastAPI 项目骨架、新浪行情解析、VWAP 计算、WebSocket 推送、数据健康监控</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:14px 20px;font-weight:900;color:#42a5f5;white-space:nowrap">Day 2</td>
+          <td style="padding:14px 20px;color:var(--text2);white-space:nowrap">信号系统</td>
+          <td style="padding:14px 20px;color:var(--text1)">P1/P2/P3 结构相位、多维评分模型、大盘环境联动阈值、Qwen AI 解读接入</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:14px 20px;font-weight:900;color:#af52bf;white-space:nowrap">Day 3</td>
+          <td style="padding:14px 20px;color:var(--text2);white-space:nowrap">前端界面</td>
+          <td style="padding:14px 20px;color:var(--text1)">ECharts 分时图、VWAP 包络带、自选/持仓双面板、做T策略标签页、实时行情渲染</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:14px 20px;font-weight:900;color:#00bcd4;white-space:nowrap">Day 4</td>
+          <td style="padding:14px 20px;color:var(--text2);white-space:nowrap">提醒引擎</td>
+          <td style="padding:14px 20px;color:var(--text1)">买入/加仓/做T 三套逻辑、冷却机制、Toast 架构、数据异常拦截、持仓异动告警</td>
+        </tr>
+        <tr>
+          <td style="padding:14px 20px;font-weight:900;color:#ffab00;white-space:nowrap">Day 5</td>
+          <td style="padding:14px 20px;color:var(--text2);white-space:nowrap">回测 &amp; 部署</td>
+          <td style="padding:14px 20px;color:var(--text1)">历史数据回测框架、信号胜率统计、参数校准、本地自启动部署、AI 协作迭代方法论</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 你将构建的系统 -->
+  <div class="section-title">你将构建的系统</div>
+  <div class="overview-grid">
+    <div class="overview-card">
+      <div class="oc-icon">📡</div>
+      <div class="oc-title">实时行情引擎</div>
+      <div class="oc-desc">新浪/腾讯双源 + VWAP 计算 + WebSocket 秒级推送</div>
+    </div>
+    <div class="overview-card">
+      <div class="oc-icon">🧠</div>
+      <div class="oc-title">AI 信号评分</div>
+      <div class="oc-desc">P1/P2/P3 结构相位 + 多维评分 + Qwen 解读</div>
+    </div>
+    <div class="overview-card">
+      <div class="oc-icon">🔔</div>
+      <div class="oc-title">智能提醒系统</div>
+      <div class="oc-desc">买入/加仓/做T 三套逻辑 + 大盘动态阈值</div>
+    </div>
+    <div class="overview-card">
+      <div class="oc-icon">🛡️</div>
+      <div class="oc-title">风控 & 数据健康</div>
+      <div class="oc-desc">WS断线检测 / VWAP缺失预警 / 价格异常拦截</div>
+    </div>
+    <div class="overview-card">
+      <div class="oc-icon">📊</div>
+      <div class="oc-title">回测验证框架</div>
+      <div class="oc-desc">历史数据回放 + 信号胜率统计 + 参数优化</div>
+    </div>
+    <div class="overview-card">
+      <div class="oc-icon">🚀</div>
+      <div class="oc-title">本地自动部署</div>
+      <div class="oc-desc">开盘自启动 + 日志管理 + 一键更新</div>
+    </div>
+  </div>
+
+  <!-- 课程详细内容 -->
+  <div class="section-title">5天课程详细内容</div>
+
+  <!-- DAY 1 -->
+  <div class="day-card d1 open" id="day-0">
+    <div class="day-header" onclick="toggleDay(0)">
+      <div class="day-num">1</div>
+      <div class="day-header-text">
+        <div class="day-label">Day 1 · 地基</div>
+        <h2>Claude Code 认知 + 环境搭建 + 数据层</h2>
+        <div class="day-sub">Claude Code 心智模型 · FastAPI 项目骨架 · 新浪行情解析 · VWAP 计算 · WebSocket 推送</div>
+      </div>
+      <div class="day-tags">
+        <span class="day-tag" style="background:rgba(0,230,118,.12);color:#00e676">Python</span>
+        <span class="day-tag" style="background:rgba(0,230,118,.12);color:#00e676">FastAPI</span>
+        <span class="day-tag" style="background:rgba(0,230,118,.12);color:#00e676">WebSocket</span>
+        <span class="day-tag" style="background:rgba(0,230,118,.12);color:#00e676">VWAP</span>
+      </div>
+      <div class="chevron">▶</div>
+    </div>
+    <div class="day-body">
+      <div class="module-list">
+
+        <div class="module">
+          <div class="module-header">
+            <span class="module-icon">🧭</span>
+            <span class="module-title">模块 1-1：Claude Code 心智模型</span>
+            <span class="module-duration">60 min</span>
+          </div>
+          <div class="module-desc">Claude Code 不是代码补全工具，而是能理解业务逻辑、做架构决策的 AI 工程师。学会写高质量需求比学会写代码更重要。</div>
+          <div class="points">
+            <div class="point"><div class="point-dot"></div>Claude Code vs Copilot vs ChatGPT：定位与场景的本质区别</div>
+            <div class="point"><div class="point-dot"></div>高质量 Prompt 三要素：给背景、给约束、给预期格式</div>
+            <div class="point"><div class="point-dot"></div>遇到报错的标准流程：截图/粘贴错误 → 让 Claude 诊断 → 最小化修改</div>
+            <div class="point"><div class="point-dot"></div>演示：5分钟让 Claude 读懂一个300行 Python 文件并找出潜在 bug</div>
+          </div>
+          <div class="claude-tip">
+            <div class="claude-tip-label">🤖 典型提示词示例</div>
+            <div class="claude-tip-text">"读取 app.py，告诉我整体架构、数据流向，以及你认为最脆弱的3个地方，用中文。"</div>
+          </div>
+        </div>
+
+        <div class="module">
+          <div class="module-header">
+            <span class="module-icon">⚙️</span>
+            <span class="module-title">模块 1-2：开发环境搭建</span>
+            <span class="module-duration">45 min</span>
+          </div>
+          <div class="module-desc">全程用 Claude Code 辅助配置，遇到依赖冲突和 SSL 报错直接甩给它处理。</div>
+          <div class="points">
+            <div class="point"><div class="point-dot"></div>Python 3.11 + FastAPI + uvicorn + akshare 环境安装</div>
+            <div class="point"><div class="point-dot"></div>项目目录规范：modules / static / data 分层设计</div>
+            <div class="point"><div class="point-dot"></div>start.sh 一键启动脚本的基础版本</div>
+          </div>
+        </div>
+
+        <div class="module">
+          <div class="module-header">
+            <span class="module-icon">📡</span>
+            <span class="module-title">模块 1-3：A 股实时行情接入 + VWAP 计算</span>
+            <span class="module-duration">90 min</span>
+          </div>
+          <div class="module-desc">解析新浪行情 API 每一个字段，掌握 VWAP 的正确计算方式，搭好双数据源容灾。</div>
+          <div class="points">
+            <div class="point"><div class="point-dot"></div>新浪行情字段完整解析：price / prev_close / open / amount / volume</div>
+            <div class="point"><div class="point-dot"></div>VWAP 正确公式：amount ÷ (volume × 100)，单位换算是常见踩坑点</div>
+            <div class="point"><div class="point-dot"></div>主源（新浪）+ 备用源（腾讯）自动切换逻辑</div>
+            <div class="point"><div class="point-dot"></div>字段安全原则：前后端字段名必须完全一致，pre_close ≠ prev_close</div>
+          </div>
+          <div class="claude-tip">
+            <div class="claude-tip-label">🤖 典型提示词示例</div>
+            <div class="claude-tip-text">"新浪行情返回逗号分隔数据，帮我写解析函数，计算 VWAP 加入返回结果，加好异常处理。"</div>
+          </div>
+        </div>
+
+        <div class="module">
+          <div class="module-header">
+            <span class="module-icon">🔄</span>
+            <span class="module-title">模块 1-4：WebSocket 实时推送架构</span>
+            <span class="module-duration">75 min</span>
+          </div>
+          <div class="module-desc">实现服务端主动推送，前端订阅即刻收到行情，断线3秒自动重连。</div>
+          <div class="points">
+            <div class="point"><div class="point-dot"></div>FastAPI WebSocket 路由 + 客户端订阅协议设计</div>
+            <div class="point"><div class="point-dot"></div>前端 onmessage 接收并合并到 state.quotes</div>
+            <div class="point"><div class="point-dot"></div>_lastQuoteTs 时效监控：交易时段超3分钟未收到数据触发警告</div>
+            <div class="point"><div class="point-dot"></div>数据健康四类异常：WS断线 / 行情过期 / VWAP=0 / 价格=0</div>
+          </div>
+        </div>
+
+      </div>
+      <div class="output-box">
+        <div class="output-label">📦 Day 1 实战产出</div>
+        <div class="output-items">
+          <span class="output-item">FastAPI 项目骨架</span>
+          <span class="output-item">data_feed.py 含VWAP</span>
+          <span class="output-item">/ws/quote WebSocket端点</span>
+          <span class="output-item">前端行情订阅+断线重连</span>
+          <span class="output-item">数据健康检查函数</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DAY 2 -->
+  <div class="day-card d2" id="day-1">
+    <div class="day-header" onclick="toggleDay(1)">
+      <div class="day-num">2</div>
+      <div class="day-header-text">
+        <div class="day-label">Day 2 · 大脑</div>
+        <h2>技术指标 + 结构相位 + 评分模型</h2>
+        <div class="day-sub">P1/P2/P3 结构相位 · 多维评分模型 · 大盘联动动态阈值 · Qwen AI 解读接入</div>
+      </div>
+      <div class="day-tags">
+        <span class="day-tag" style="background:rgba(66,165,245,.12);color:#42a5f5">P1/P2/P3</span>
+        <span class="day-tag" style="background:rgba(66,165,245,.12);color:#42a5f5">评分模型</span>
+        <span class="day-tag" style="background:rgba(66,165,245,.12);color:#42a5f5">Qwen AI</span>
+        <span class="day-tag" style="background:rgba(66,165,245,.12);color:#42a5f5">大盘环境</span>
+      </div>
+      <div class="chevron">▶</div>
+    </div>
+    <div class="day-body">
+      <div class="module-list">
+
+        <div class="module">
+          <div class="module-header">
+            <span class="module-icon">📐</span>
+            <span class="module-title">模块 2-1：结构相位分析 P1 / P2 / P3</span>
+            <span class="module-duration">90 min</span>
+          </div>
+          <div class="module-desc">A 股短线最重要的买入框架：三个相位共振时信号强度远超单一指标。</div>
+          <div class="points">
+            <div class="point"><div class="point-dot"></div>P1（趋势完好）：MA5上行 + 近期不破前低，趋势是地基</div>
+            <div class="point"><div class="point-dot"></div>P2（回调到位）：从高点回落 3-8%，缩量，位置是关键</div>
+            <div class="point"><div class="point-dot"></div>P3（当日企稳）：缩量收阳 / 低开高走，时机是触发器</div>
+            <div class="point"><div class="point-dot"></div>用 Claude Code 将自然语言规则直接转为 Python 判断函数</div>
+            <div class="point"><div class="point-dot"></div>为什么 P1+P3 是最低门槛，P1+P2+P3 才是高质量信号</div>
+          </div>
+          <div class="claude-tip">
+            <div class="claude-tip-label">🤖 典型提示词示例</div>
+            <div class="claude-tip-text">"实现 P2 判断：从近20日最高点回落超3%但不超8%，且近5日均量 &lt; 20日均量×0.7，返回 bool 和置信度。"</div>
+          </div>
+        </div>
+
+        <div class="module">
+          <div class="module-header">
+            <span class="module-icon">🧮</span>
+            <span class="module-title">模块 2-2：多维评分体系 + 大盘联动</span>
+            <span class="module-duration">90 min</span>
+          </div>
+          <div class="module-desc">将多个指标整合成 0-100 评分，并让评分门槛随大盘状态动态调整。</div>
+          <div class="points">
+            <div class="point"><div class="point-dot"></div>评分维度：趋势 / 量能 / 价格位置 / 大盘 / 板块共振</div>
+            <div class="point"><div class="point-dot"></div>baseScore（纯技术分）vs score（风控扣分后综合分）的设计意图</div>
+            <div class="point"><div class="point-dot"></div>大盘环境三档：strong / normal / weak，驱动全系统风险偏好</div>
+            <div class="point"><div class="point-dot"></div>动态阈值：正常/强势→65分入场，弱势→72分，防止熊市抄底</div>
+            <div class="point"><div class="point-dot"></div>风控拦截 riskBlock：跌破关键支撑一票否决，不管评分多高</div>
+          </div>
+        </div>
+
+        <div class="module">
+          <div class="module-header">
+            <span class="module-icon">🤖</span>
+            <span class="module-title">模块 2-3：接入 Qwen 生成 AI 解读</span>
+            <span class="module-duration">60 min</span>
+          </div>
+          <div class="module-desc">让 AI 对量化信号做自然语言解读，生成交易者能直接看懂的操作建议。</div>
+          <div class="points">
+            <div class="point"><div class="point-dot"></div>DashScope API 接入（兼容 OpenAI 格式，改一行 base_url 即可）</div>
+            <div class="point"><div class="point-dot"></div>System Prompt 设计：角色定位 + 字数限制 + 禁止废话</div>
+            <div class="point"><div class="point-dot"></div>将结构化评分结果注入 Prompt，让模型结合数据解读而非空谈</div>
+            <div class="point"><div class="point-dot"></div>流式输出（streaming）实现打字机效果，提升使用体验</div>
+          </div>
+        </div>
+
+      </div>
+      <div class="output-box">
+        <div class="output-label">📦 Day 2 实战产出</div>
+        <div class="output-items">
+          <span class="output-item">P1/P2/P3 相位判断模块</span>
+          <span class="output-item">/api/signal/{code} 评分接口</span>
+          <span class="output-item">大盘环境识别模块</span>
+          <span class="output-item">Qwen AI 流式解读</span>
+          <span class="output-item">买入区间计算逻辑</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DAY 3 -->
+  <div class="day-card d3" id="day-2">
+    <div class="day-header" onclick="toggleDay(2)">
+      <div class="day-num">3</div>
+      <div class="day-header-text">
+        <div class="day-label">Day 3 · 界面</div>
+        <h2>全栈可视化交易界面</h2>
+        <div class="day-sub">ECharts 分时图 · VWAP 包络带 · 自选/持仓双面板 · 做T标签页 · 实时行情渲染</div>
+      </div>
+      <div class="day-tags">
+        <span class="day-tag" style="background:rgba(175,82,191,.12);color:#af52bf">HTML/CSS/JS</span>
+        <span class="day-tag" style="background:rgba(175,82,191,.12);color:#af52bf">ECharts</span>
+        <span class="day-tag" style="background:rgba(175,82,191,.12);color:#af52bf">暗色主题</span>
+        <span class="day-tag" style="background:rgba(175,82,191,.12);color:#af52bf">实时渲染</span>
+      </div>
+      <div class="chevron">▶</div>
+    </div>
+    <div class="day-body">
+      <div class="module-list">
+
+        <div class="module">
+          <div class="module-header">
+            <span class="module-icon">🎨</span>
+            <span class="module-title">模块 3-1：交易软件 UI 设计原则</span>
+            <span class="module-duration">45 min</span>
+          </div>
+          <div class="module-desc">好的交易界面不是炫酷，是在高压下不出错。颜色语义、信息密度、操作路径缺一不可。</div>
+          <div class="points">
+            <div class="point"><div class="point-dot"></div>A股配色惯例：红涨绿跌，与国际市场相反，不能搞混</div>
+            <div class="point"><div class="point-dot"></div>CSS 变量体系：一套 token 驱动整个界面颜色和间距</div>
+            <div class="point"><div class="point-dot"></div>信息层级：主要数据大字重，次要数据灰色小字，一眼看懂</div>
+            <div class="point"><div class="point-dot"></div>用 Claude Code 根据文字描述直接生成完整 HTML 组件</div>
+          </div>
+          <div class="claude-tip">
+            <div class="claude-tip-label">🤖 典型提示词示例</div>
+            <div class="claude-tip-text">"设计一个股票持仓卡片：股票名称、代码、成本价、现价、涨跌幅、AI信号标签。暗色背景，红涨绿跌，紧凑布局。"</div>
+          </div>
+        </div>
+
+        <div class="module">
+          <div class="module-header">
+            <span class="module-icon">📈</span>
+            <span class="module-title">模块 3-2：ECharts 分时图 + K 线图</span>
+            <span class="module-duration">90 min</span>
+          </div>
+          <div class="module-desc">集成专业级图表，展示 VWAP 包络线、成交量、买卖信号标注，WebSocket 实时驱动刷新。</div>
+          <div class="points">
+            <div class="point"><div class="point-dot"></div>ECharts 双 Y 轴配置：价格轴（左）+ 成交量轴（下）</div>
+            <div class="point"><div class="point-dot"></div>VWAP 均线 + ±2% 包络带：识别日内超买超卖区域</div>
+            <div class="point"><div class="point-dot"></div>买卖信号 markPoint 标注：哪里买、哪里止损一目了然</div>
+            <div class="point"><div class="point-dot"></div>实时增量刷新：只更新最新数据点，不重绘整个图表</div>
+          </div>
+        </div>
+
+        <div class="module">
+          <div class="module-header">
+            <span class="module-icon">📋</span>
+            <span class="module-title">模块 3-3：自选股 + 持仓双面板</span>
+            <span class="module-duration">75 min</span>
+          </div>
+          <div class="module-desc">两套核心面板联动，股票名称批量加载（解决侧边栏只显示代码的问题），按评分排序。</div>
+          <div class="points">
+            <div class="point"><div class="point-dot"></div>localStorage 持久化：刷新页面不丢失自选股和持仓</div>
+            <div class="point"><div class="point-dot"></div>/api/stock_names 批量接口：加载时立刻拿到所有股票名称</div>
+            <div class="point"><div class="point-dot"></div>持仓卡片：成本价 / 盈亏百分比 / 信号评分 / AI 标签一屏展示</div>
+            <div class="point"><div class="point-dot"></div>做T策略标签页：针对持仓股展示日内操作建议</div>
+          </div>
+        </div>
+
+      </div>
+      <div class="output-box">
+        <div class="output-label">📦 Day 3 实战产出</div>
+        <div class="output-items">
+          <span class="output-item">完整单页交易界面</span>
+          <span class="output-item">ECharts 分时+K线图</span>
+          <span class="output-item">自选股/持仓双面板</span>
+          <span class="output-item">做T策略标签页</span>
+          <span class="output-item">WebSocket 实时渲染</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DAY 4 -->
+  <div class="day-card d4" id="day-3">
+    <div class="day-header" onclick="toggleDay(3)">
+      <div class="day-num">4</div>
+      <div class="day-header-text">
+        <div class="day-label">Day 4 · 神经</div>
+        <h2>提醒引擎 + 做T信号 + 风控体系</h2>
+        <div class="day-sub">买入/加仓/做T 三套逻辑 · 冷却机制 · Toast 架构 · 数据异常拦截 · 持仓异动告警</div>
+      </div>
+      <div class="day-tags">
+        <span class="day-tag" style="background:rgba(0,188,212,.12);color:#00bcd4">买入提醒</span>
+        <span class="day-tag" style="background:rgba(0,188,212,.12);color:#00bcd4">做T信号</span>
+        <span class="day-tag" style="background:rgba(0,188,212,.12);color:#00bcd4">风控拦截</span>
+        <span class="day-tag" style="background:rgba(0,188,212,.12);color:#00bcd4">节流防抖</span>
+      </div>
+      <div class="chevron">▶</div>
+    </div>
+    <div class="day-body">
+      <div class="module-list">
+
+        <div class="module">
+          <div class="module-header">
+            <span class="module-icon">🟢</span>
+            <span class="module-title">模块 4-1：买入 / 加仓提醒逻辑</span>
+            <span class="module-duration">75 min</span>
+          </div>
+          <div class="module-desc">核心原则：宁可漏报，不能误报。误导买入比没有系统更危险。</div>
+          <div class="points">
+            <div class="point"><div class="point-dot"></div>_evalBuyCondition：相位 + 评分 + 价格区间三重门槛</div>
+            <div class="point"><div class="point-dot"></div>低分入场（55-64分）强制要求 P1+P2+P3 全满足</div>
+            <div class="point"><div class="point-dot"></div>加仓防飞刀：score &lt; 50 时屏蔽所有加仓，避免趋势破坏后补仓</div>
+            <div class="point"><div class="point-dot"></div>30分钟冷却：同一只股不重复打扰，_buyAlertCooldown 实现</div>
+            <div class="point"><div class="point-dot"></div>北京时间强制转换：避免时区错误导致交易时段判断失效</div>
+          </div>
+          <div class="claude-tip">
+            <div class="claude-tip-label">🤖 典型提示词示例</div>
+            <div class="claude-tip-text">"_evalBuyCondition 现在55分的股票也触发了，帮我分析根因并修复，保持P1+P3条件不变，修改范围最小化。"</div>
+          </div>
+        </div>
+
+        <div class="module">
+          <div class="module-header">
+            <span class="module-icon">⚡</span>
+            <span class="module-title">模块 4-2：超短线做T信号引擎</span>
+            <span class="module-duration">90 min</span>
+          </div>
+          <div class="module-desc">2-4天持股周期的做T逻辑：目标是锁利润和防守撤退，而非降成本。</div>
+          <div class="points">
+            <div class="point"><div class="point-dot"></div>三种信号：急拉高抛（橙）/ 破位减仓（红）/ 均线低吸（紫）</div>
+            <div class="point"><div class="point-dot"></div>急拉判断用 VWAP 正乖离 &gt;3.5% 而非"开盘速度代理"（防慢牛误判）</div>
+            <div class="point"><div class="point-dot"></div>早盘时间锁：9:30-10:00 VWAP 失真，屏蔽破位/低吸信号</div>
+            <div class="point"><div class="point-dot"></div>硬性止损底线：日内跌幅 &lt;-3% 即使无 VWAP 也触发破位减仓</div>
+            <div class="point"><div class="point-dot"></div>15分钟冷却（日内节奏比买入提醒更快）</div>
+          </div>
+        </div>
+
+        <div class="module">
+          <div class="module-header">
+            <span class="module-icon">🔔</span>
+            <span class="module-title">模块 4-3：提醒 UI + 推送性能优化</span>
+            <span class="module-duration">60 min</span>
+          </div>
+          <div class="module-desc">让提醒既不打扰也不遗漏，行情高频推送时保持页面流畅不卡顿。</div>
+          <div class="points">
+            <div class="point"><div class="point-dot"></div>抽屉面板设计：买入/加仓 与 做T 两个 Tab 视觉完全隔离</div>
+            <div class="point"><div class="point-dot"></div>Toast 容器：Flex column-reverse 解决动态 bottom 计算导致的重叠错位</div>
+            <div class="point"><div class="point-dot"></div>1.5秒节流：WebSocket 高频推送时每1.5秒最多触发一次检查</div>
+            <div class="point"><div class="point-dot"></div>触发时机三路：定时5分钟 / WS推送节流 / 单股信号加载完成后</div>
+          </div>
+        </div>
+
+        <div class="module">
+          <div class="module-header">
+            <span class="module-icon">🛡️</span>
+            <span class="module-title">模块 4-4：数据健康监控 + 风控拦截</span>
+            <span class="module-duration">45 min</span>
+          </div>
+          <div class="module-desc">数据不对比没有信号更危险，有问题必须第一时间点名告诉用户哪只股出了什么问题。</div>
+          <div class="points">
+            <div class="point"><div class="point-dot"></div>_checkDataHealth：四类异常检测，精确到具体股票名称</div>
+            <div class="point"><div class="point-dot"></div>面板红色警告条：有问题显示，数据恢复自动消失</div>
+            <div class="point"><div class="point-dot"></div>price=0 / vwap=0：跳过计算，拒绝产生基于错误数据的信号</div>
+            <div class="point"><div class="point-dot"></div>尾盘异动监控：14:44后量比≥1.5x 且跌破 VWAP 触发持仓告警</div>
+          </div>
+        </div>
+
+      </div>
+      <div class="output-box">
+        <div class="output-label">📦 Day 4 实战产出</div>
+        <div class="output-items">
+          <span class="output-item">_evalBuyCondition 买入判断</span>
+          <span class="output-item">_evalT0Signal 做T判断</span>
+          <span class="output-item">提醒抽屉面板+Toast</span>
+          <span class="output-item">_checkDataHealth 健康检查</span>
+          <span class="output-item">持仓异动告警</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DAY 5 -->
+  <div class="day-card d5" id="day-4">
+    <div class="day-header" onclick="toggleDay(4)">
+      <div class="day-num">5</div>
+      <div class="day-header-text">
+        <div class="day-label">Day 5 · 验证 & 上线</div>
+        <h2>回测验证 + 本地部署 + 持续迭代</h2>
+        <div class="day-sub">历史回测框架 · 信号胜率统计 · 参数校准 · 本地自启动部署 · AI 协作迭代方法论</div>
+      </div>
+      <div class="day-tags">
+        <span class="day-tag" style="background:rgba(255,171,0,.12);color:#ffab00">回测框架</span>
+        <span class="day-tag" style="background:rgba(255,171,0,.12);color:#ffab00">胜率统计</span>
+        <span class="day-tag" style="background:rgba(255,171,0,.12);color:#ffab00">自动部署</span>
+        <span class="day-tag" style="background:rgba(255,171,0,.12);color:#ffab00">迭代方法论</span>
+      </div>
+      <div class="chevron">▶</div>
+    </div>
+    <div class="day-body">
+      <div class="module-list">
+
+        <div class="module">
+          <div class="module-header">
+            <span class="module-icon">📊</span>
+            <span class="module-title">模块 5-1：历史数据回测框架</span>
+            <span class="module-duration">90 min</span>
+          </div>
+          <div class="module-desc">用历史 K 线数据模拟信号触发，统计每类信号的真实胜率和风险收益比。</div>
+          <div class="points">
+            <div class="point"><div class="point-dot"></div>akshare 获取历史日 K 线数据，构建回测数据集</div>
+            <div class="point"><div class="point-dot"></div>历史数据回放：逐日模拟 P1/P2/P3 判断 + 评分计算</div>
+            <div class="point"><div class="point-dot"></div>信号胜率统计：触发后3天/5天涨幅分布，识别哪些参数真的有效</div>
+            <div class="point"><div class="point-dot"></div>最大回撤计算：验证风控拦截是否真的减少了亏损</div>
+            <div class="point"><div class="point-dot"></div>用 Claude Code 自动生成回测报告和可视化图表</div>
+          </div>
+          <div class="claude-tip">
+            <div class="claude-tip-label">🤖 典型提示词示例</div>
+            <div class="claude-tip-text">"帮我写回测脚本，对某只股票过去1年的数据运行 _evalBuyCondition 逻辑，统计触发后5日平均涨幅和胜率。"</div>
+          </div>
+        </div>
+
+        <div class="module">
+          <div class="module-header">
+            <span class="module-icon">🔬</span>
+            <span class="module-title">模块 5-2：参数校准与信号优化</span>
+            <span class="module-duration">60 min</span>
+          </div>
+          <div class="module-desc">回测结果告诉你哪些阈值设对了、哪些需要调整，用数据说话而不是感觉。</div>
+          <div class="points">
+            <div class="point"><div class="point-dot"></div>评分阈值敏感性分析：60分/65分/70分的胜率差异</div>
+            <div class="point"><div class="point-dot"></div>P2 回调幅度区间校准：3-8% 是否是最优范围</div>
+            <div class="point"><div class="point-dot"></div>大盘环境分层验证：强市/弱市的信号质量差异有多大</div>
+            <div class="point"><div class="point-dot"></div>做T信号回测：VWAP 偏离 3.5% 阈值的历史准确率</div>
+            <div class="point"><div class="point-dot"></div>过拟合警示：回测好看不代表实盘好，如何避免过度优化</div>
+          </div>
+        </div>
+
+        <div class="module">
+          <div class="module-header">
+            <span class="module-icon">🚀</span>
+            <span class="module-title">模块 5-3：本地自动部署</span>
+            <span class="module-duration">45 min</span>
+          </div>
+          <div class="module-desc">让系统每天开盘前自动启动，开盘后立即开始监控，完全不需要手动操作。</div>
+          <div class="points">
+            <div class="point"><div class="point-dot"></div>start.sh 完整版：端口检测 + 旧进程清理 + 日志轮转</div>
+            <div class="point"><div class="point-dot"></div>macOS launchd 定时任务：工作日 9:25 自动启动</div>
+            <div class="point"><div class="point-dot"></div>数据库定期清理：防止分时缓存无限增长</div>
+            <div class="point"><div class="point-dot"></div>后续扩展方向：企业微信/钉钉推送 / 云端部署 / 移动端适配</div>
+          </div>
+        </div>
+
+        <div class="module">
+          <div class="module-header">
+            <span class="module-icon">🔄</span>
+            <span class="module-title">模块 5-4：用 Claude Code 持续迭代的方法论</span>
+            <span class="module-duration">45 min</span>
+          </div>
+          <div class="module-desc">这门课最重要的内容：系统不是一次写完的，是一次次实盘误报之后逐步校准的。</div>
+          <div class="points">
+            <div class="point"><div class="point-dot"></div>收到优化建议 → 评估可行性 → 让 Claude Code 实现 → 回测验证</div>
+            <div class="point"><div class="point-dot"></div>遇到实盘误报 → 截图给 Claude → 分析根因 → 最小化改动修复</div>
+            <div class="point"><div class="point-dot"></div>严谨性原则：查清楚数据再动手，不要在错误假设上叠加逻辑</div>
+            <div class="point"><div class="point-dot"></div>AI 协作的边界：哪些决策必须人来做（止损纪律），哪些交给系统</div>
+            <div class="point"><div class="point-dot"></div>量化工具辅助决策，不替代判断——系统给信号，你来按不按</div>
+          </div>
+          <div class="claude-tip">
+            <div class="claude-tip-label">🤖 典型提示词示例</div>
+            <div class="claude-tip-text">"昨天系统对某只股触发了买入提醒但它随后跌了，帮我分析是哪个判断条件失效了，以及怎么避免下次误报。"</div>
+          </div>
+        </div>
+
+      </div>
+      <div class="output-box">
+        <div class="output-label">📦 Day 5 实战产出</div>
+        <div class="output-items">
+          <span class="output-item">回测脚本 + 胜率报告</span>
+          <span class="output-item">参数校准结论文档</span>
+          <span class="output-item">start.sh 完整启动脚本</span>
+          <span class="output-item">launchd 自动任务配置</span>
+          <span class="output-item">迭代方法论 SOP</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 核心理念 -->
+  <div style="margin-top:56px">
+    <div class="section-title">贯穿全程的核心理念</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px">
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px 18px">
+        <div style="font-size:24px;margin-bottom:10px">⚡</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text1);margin-bottom:6px">AI 加速，人来决策</div>
+        <div style="font-size:11px;color:var(--text2);line-height:1.6">Claude Code 负责实现，你负责定义正确的问题。学会写高质量需求比学会写代码更重要。</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px 18px">
+        <div style="font-size:24px;margin-bottom:10px">🔍</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text1);margin-bottom:6px">查清楚再动手</div>
+        <div style="font-size:11px;color:var(--text2);line-height:1.6">数据链路不通，功能再好看也是摆设。每次修改前先读代码、验数据，避免在错误假设上叠加错误。</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px 18px">
+        <div style="font-size:24px;margin-bottom:10px">🛡️</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text1);margin-bottom:6px">安全是底线</div>
+        <div style="font-size:11px;color:var(--text2);line-height:1.6">无效数据宁可静默跳过，影响决策的缺失必须明确告警。误导买入，比没有系统更危险。</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px 18px">
+        <div style="font-size:24px;margin-bottom:10px">📊</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text1);margin-bottom:6px">回测说话，数据验证</div>
+        <div style="font-size:11px;color:var(--text2);line-height:1.6">感觉好不算好，回测胜率说了算。但回测只是起点，实盘持续校准才是终点。</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <strong>5天课程 · 用 Claude Code 设计短线量化交易软件</strong><br>
+  基于真实项目开发历程整理，所有代码均来自实际构建的 A 股量化交易系统<br>
+  <span style="color:var(--text3);font-size:11px;margin-top:8px;display:block">
+    ⚠️ 量化系统辅助决策，不构成投资建议，实盘操作需结合个人风控判断
+  </span>
+</footer>
+
+<script>
+  function toggleDay(idx) {
+    document.getElementById('day-' + idx).classList.toggle('open');
+  }
+  function openDay(idx) {
+    const card = document.getElementById('day-' + idx);
+    card.classList.add('open');
+    card.scrollIntoView({ behavior:'smooth', block:'start' });
+  }
+  // 默认只展开第一天
+  document.querySelectorAll('.day-card').forEach((c, i) => {
+    if (i !== 0) c.classList.remove('open');
+  });
+</script>
+</body>
+</html>
